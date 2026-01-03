@@ -2,10 +2,7 @@ package ui
 
 import (
 	"errors"
-	"fmt"
 	"os"
-
-	"netscan/internal/network"
 
 	"github.com/jessevdk/go-flags"
 )
@@ -19,11 +16,31 @@ CIDR range format example:
   192.168.0.0/24 for addresses from 192.168.0.1 to 192.168.0.254`
 
 // Options definition for jessevdk/go-flags package.
-type CliOptions struct {
+type cliOptions struct {
 	Verbose bool `short:"v" long:"verbose" description:"Verbose output"`
 }
 
-var cliOptions = &CliOptions{}
+type OptionsParser struct {
+	opts   *cliOptions
+	parser *flags.Parser
+}
+
+// OptionsParser performs command line arguments parsing.
+func NewOptionsParser() *OptionsParser {
+	options := &cliOptions{}
+	parser := flags.NewParser(options, flags.Default)
+	parser.LongDescription = strDesription
+	parser.Usage = strUsage
+	return &OptionsParser{
+		opts:   options,
+		parser: parser,
+	}
+}
+
+// Writes CLI help message to the standard output.
+func (p *OptionsParser) ShowHelpMessage() {
+	p.parser.WriteHelp(os.Stdout)
+}
 
 // Parses command line arguments.
 //
@@ -35,11 +52,8 @@ var cliOptions = &CliOptions{}
 //   - ErrHelpShown: help message has been shown, program should exit without error;
 //   - ErrArgParsing: generic error parsing command line arguments;
 //   - other errors returned by the jessevdk/go-flags package.
-func ParseArgs() (*Options, error) {
-	var parser = flags.NewParser(cliOptions, flags.Default)
-	parser.LongDescription = strDesription
-	parser.Usage = strUsage
-	args, err := parser.Parse()
+func (p *OptionsParser) ParseArgs() (*Options, error) {
+	args, err := p.parser.Parse()
 	if err != nil {
 		var flagsErr *flags.Error
 		if errors.As(err, &flagsErr) && flagsErr.Type == flags.ErrHelp {
@@ -48,17 +62,11 @@ func ParseArgs() (*Options, error) {
 		return nil, err
 	}
 	if len(args) < 1 {
-		parser.WriteHelp(os.Stdout)
+		p.ShowHelpMessage()
 		return nil, ErrHelpShown
 	}
-	prefix, err := network.ParseCidrOrAddr(args[0])
-	if err != nil || prefix == nil {
-		return nil, ErrAddrParsing
-	}
-	fmt.Println(prefix)
-	options := Options{
+	return &Options{
 		CIDR:      args[0],
-		IsVerbose: cliOptions.Verbose,
-	}
-	return &options, nil
+		IsVerbose: p.opts.Verbose,
+	}, nil
 }

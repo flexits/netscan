@@ -3,21 +3,38 @@ package main
 import (
 	"errors"
 	"fmt"
-	_ "net/netip"
+	"netscan/internal/network"
 	"netscan/internal/ui"
 	"os"
 )
 
 func main() {
-	options, err := ui.ParseArgs()
-	if err != nil {
+	// parse command line arguments
+	optionsParser := ui.NewOptionsParser()
+	options, err := optionsParser.ParseArgs()
+	if err != nil || options == nil {
 		if errors.Is(err, ui.ErrHelpShown) {
 			os.Exit(0)
 		}
 		fmt.Printf("Error parsing options: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Println("CIDR:", options.CIDR)
+
+	// parse and validate CIDR/address
+	addrParser := network.NewAddrParser()
+	addrParser.SetVerbosity(options.IsVerbose)
+	addresses, err := addrParser.ParseCidrOrAddr(options.CIDR)
+	if err != nil || addresses == nil {
+		fmt.Printf("Error parsing CIDR/address: %v\n", err)
+		os.Exit(1)
+	}
+	if len(*addresses) == 0 {
+		fmt.Println("No addresses to work with - exiting")
+		os.Exit(0)
+	}
+
+	fmt.Println("CIDR string:", options.CIDR)
 	fmt.Println("Verbose:", options.IsVerbose)
+	fmt.Println("Hosts:", *addresses)
 	os.Exit(0)
 }
