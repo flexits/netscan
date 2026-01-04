@@ -3,7 +3,6 @@ package network
 import (
 	"errors"
 	"iter"
-	"math/big"
 	"net"
 	"net/netip"
 )
@@ -12,6 +11,7 @@ type AddrParser struct {
 	hostsFirst netip.Addr
 	hostsLast  netip.Addr
 	cidr       netip.Prefix
+	length     int
 	isVerbose  bool // TODO verbosity is not implemented yet
 }
 
@@ -37,6 +37,11 @@ func (p *AddrParser) GetHostsLast() netip.Addr {
 // Get CIDR prefix of the parsed range.
 func (p *AddrParser) GetCIDR() netip.Prefix {
 	return p.cidr
+}
+
+// Get number of hosts in the parsed range
+func (p *AddrParser) GetHostsLength() int {
+	return p.length
 }
 
 // Iterates over all host addresses in the parsed range,
@@ -67,15 +72,26 @@ func (p *AddrParser) ParseCidrOrAddr(s string) error {
 		if err2 != nil {
 			return err
 		}
+		if !ip.IsPrivate() {
+			return errors.New("not a private network")
+		}
 		p.hostsFirst = ip
 		p.hostsLast = ip
 		p.cidr = netip.PrefixFrom(ip, ip.BitLen())
+		p.length = 1
 		return nil
 	}
 	// it's a CIDR range
 	prefix = prefix.Masked()
 	p.cidr = prefix
-	return p.populateHosts()
+	err = p.populateHosts()
+	if err != nil {
+		return err
+	}
+	if !p.hostsFirst.IsPrivate() || !p.hostsLast.IsPrivate() {
+		return errors.New("not a private network")
+	}
+	return nil
 }
 
 func (p *AddrParser) populateHosts() error {
@@ -83,21 +99,24 @@ func (p *AddrParser) populateHosts() error {
 	if !network.IsValid() {
 		return errors.New("invalid start address")
 	}
+	is4 := network.Is4()
 	bits := p.cidr.Bits()
-	if bits == 32 || bits == 128 {
+	if bits == 128 || (is4 && bits == 32) {
 		// single address
 		p.hostsFirst = network
 		p.hostsLast = network
+		p.length = 1
 		return nil
 	}
 	next := network.Next()
 	if !next.IsValid() {
 		return errors.New("failed to calculate next address")
 	}
-	if bits == 31 || bits == 127 {
+	if bits == 127 || (is4 && bits == 31) {
 		// two addresses only; no broadcast for IPv4
 		p.hostsFirst = network
 		p.hostsLast = next
+		p.length = 2
 		return nil
 	}
 	// larger networks
@@ -105,15 +124,21 @@ func (p *AddrParser) populateHosts() error {
 	if err != nil {
 		return err
 	}
-	if network.Is4() {
+	length, err := limitRangeLength(p.cidr)
+	if err != nil {
+		return err
+	}
+	if is4 {
 		// for IPv4 networks skip network and broadcast addresses
 		p.hostsFirst = next
 		p.hostsLast = last.Prev()
+		p.length = length - 2
 
 	} else {
 		// for IPv6, use all addresses
 		p.hostsFirst = network
 		p.hostsLast = last
+		p.length = length
 	}
 	if !p.hostsLast.IsValid() {
 		return errors.New("failed to calculate last address")
@@ -147,32 +172,25 @@ func calculateLastHostInRange(prefix netip.Prefix) (netip.Addr, error) {
 	return last, nil
 }
 
-func calculateRangeLength(prefix netip.Prefix) (*big.Int, error) {
-	// Range length is needed to display progress bars
-
-	// TODO check and test this
-	// Test cases:
-	// 192.168.10.0/24 has a total of 256 addresses
-	// 2001:db8::/32 has a total of 79228162514264337593543950336 addresses
-	// 10.0.0.0/8 has a total of 16777216 addresses
-	// 192.168.1.1/32 has a total of 1 address
-
-	// Determine total bits based on IP version
-	var totalBits int
+func limitRangeLength(prefix netip.Prefix) (int, error) {
+	totalBits := 128
 	if prefix.Addr().Is4() {
 		totalBits = 32
-	} else {
-		totalBits = 128
 	}
 
-	// Calculate the number of host bits
 	hostBits := totalBits - prefix.Bits()
 	if hostBits < 0 {
-		return nil, errors.New("invalid CIDR prefix length")
+		return 0, errors.New("invalid CIDR prefix length")
 	}
 
-	// The total number of addresses is 2^hostBits.
-	// Use math/big for potentially huge IPv6 counts.
-	count := new(big.Int).Exp(big.NewInt(2), big.NewInt(int64(hostBits)), nil)
-	return count, nil
+	if hostBits > 16 {
+		return 0, errors.New("address range exceeds 65536")
+	}
+
+	count := uint64(1) << hostBits
+	if count > 65536 {
+		return 0, errors.New("address range exceeds 65536")
+	}
+
+	return int(count), nil
 }
