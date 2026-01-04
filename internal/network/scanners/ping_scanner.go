@@ -12,6 +12,7 @@ type PingScanner struct {
 	// configuration fields if needed
 }
 
+// This scanner performs ping (ICMP echo) scan
 func NewPingScanner() *PingScanner {
 	return &PingScanner{}
 }

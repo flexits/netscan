@@ -14,6 +14,7 @@ type TCPScanner struct {
 	// configuration fields if needed
 }
 
+// This scanner performs TCP connection attempt
 func NewTCPScanner() *TCPScanner {
 	return &TCPScanner{}
 }
@@ -47,3 +48,6 @@ func (s *TCPScanner) Scan(ctx context.Context, addr netip.Addr) (*ScanResult, er
 	}
 	return result, nil
 }
+
+// TODO fingerprint target
+// TODO banner grabbing
