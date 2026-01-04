@@ -2,9 +2,7 @@ package scanners
 
 import (
 	"context"
-	"fmt"
 	"math/rand/v2"
-	"net/netip"
 	"time"
 )
 
@@ -23,15 +21,10 @@ func (s *TCPScanner) GetName() string {
 	return "TCP Scan"
 }
 
-func (s *TCPScanner) Scan(ctx context.Context, addr netip.Addr) (*ScanResult, error) {
-	result := &ScanResult{
-		ScannerName: s.GetName(),
-		Status:      "scanned",
-	}
+func (s *TCPScanner) ScanTimeout(ctx context.Context, target *TargetInfo, timeout time.Duration) error {
 	select {
 	case <-ctx.Done():
-		result.Status = "interrupted"
-		return result, ctx.Err()
+		return ctx.Err()
 	default:
 		// TODO actual implementation here with Dialer.DialContext
 		/*
@@ -44,9 +37,8 @@ func (s *TCPScanner) Scan(ctx context.Context, addr netip.Addr) (*ScanResult, er
 		*/
 		// ... reuse dialer with KeepAlive disabled ...
 		time.Sleep(time.Duration((rand.IntN(900) + 100)) * time.Millisecond)
-		result.Status = fmt.Sprintf("Scanned %s", addr.String())
 	}
-	return result, nil
+	return nil
 }
 
 // TODO fingerprint target

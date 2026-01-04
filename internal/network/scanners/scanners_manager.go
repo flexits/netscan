@@ -1,6 +1,16 @@
 package scanners
 
-import "errors"
+import (
+	"context"
+	"errors"
+	"time"
+)
+
+// Unified interface for all scanners
+type Scanner interface {
+	ScanTimeout(ctx context.Context, target *TargetInfo, timeout time.Duration) error
+	GetName() string
+}
 
 // Configure what scanners to include and other options
 type ScannersManagerOptions struct {

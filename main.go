@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"sort"
 	"strings"
 	"sync"
 	"syscall"
@@ -78,7 +79,7 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	results := []*scanners.Target{}
+	results := []*scanners.TargetInfo{}
 	var muResults sync.Mutex
 
 	// start scanning
@@ -86,7 +87,7 @@ func main() {
 	wg.Go(func() {
 		// copy results to output slice
 		var wgConsumer sync.WaitGroup
-		out := make(chan *scanners.Target, options.Threads)
+		out := make(chan *scanners.TargetInfo, options.Threads)
 		wgConsumer.Go(func() {
 			for r := range out {
 				select {
@@ -121,9 +122,8 @@ func main() {
 						ui.ShowInfoString("Scanning %v\n", addr)
 					}
 					steps := scannerManager.GetSteps()
-					target := &scanners.Target{
+					target := &scanners.TargetInfo{
 						Address: addr,
-						Results: make([]*scanners.ScanResult, 0, steps),
 					}
 					for step := range steps {
 						select {
@@ -134,11 +134,11 @@ func main() {
 							if err != nil {
 								break
 							}
-							scan, err := scanner.Scan(ctx, addr)
+							// TODO get rid of the hardcoded timeout
+							err = scanner.ScanTimeout(ctx, target, 1*time.Second)
 							if err != nil {
 								continue
 							}
-							target.Results = append(target.Results, scan)
 						}
 					}
 					out <- target

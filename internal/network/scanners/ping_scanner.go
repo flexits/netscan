@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/rand/v2"
-	"net/netip"
 	"time"
 )
 
@@ -21,19 +20,17 @@ func (s *PingScanner) GetName() string {
 	return "ICMP Ping"
 }
 
-func (s *PingScanner) Scan(ctx context.Context, addr netip.Addr) (*ScanResult, error) {
-	result := &ScanResult{
-		ScannerName: s.GetName(),
-		Status:      "scanned",
-	}
+func (s *PingScanner) ScanTimeout(ctx context.Context, target *TargetInfo, timeout time.Duration) error {
 	select {
 	case <-ctx.Done():
-		result.Status = "interrupted"
-		return result, ctx.Err()
+		target.Comments = append(target.Comments,
+			fmt.Sprintf("%s interrupted by context", s.GetName()))
+		return ctx.Err()
 	default:
 		// TODO actual implementation here with ICMP echo
 		time.Sleep(time.Duration((rand.IntN(900) + 100)) * time.Millisecond)
-		result.Status = fmt.Sprintf("Scanned %s", addr.String())
+		target.Comments = append(target.Comments,
+			fmt.Sprintf("scanned by %s", s.GetName()))
 	}
-	return result, nil
+	return nil
 }

@@ -22,17 +22,6 @@ type cliOptions struct {
 	Threads byte `short:"t" long:"threads" description:"Override number of concurrent threads to use"`
 }
 
-// Options structure holds parsed command line options
-type Options struct {
-	CIDR           string
-	IsVerbose      bool
-	UseTCPScan     bool
-	UsePing        bool
-	UseFingerprint bool
-	UseBannerGrab  bool
-	Threads        byte
-}
-
 type OptionsParser struct {
 	opts   *cliOptions
 	parser *flags.Parser
