@@ -3,16 +3,18 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"netscan/internal/network"
 	"netscan/internal/network/scanners"
 	"netscan/internal/ui"
 	"os"
 	"os/signal"
 	"runtime"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/pterm/pterm"
 )
 
 func main() {
@@ -23,24 +25,25 @@ func main() {
 		if errors.Is(err, ui.ErrHelpShown) {
 			os.Exit(0)
 		}
-		fmt.Printf("Error parsing options: %v\n", err)
+		pterm.Error.Printfln("Error parsing options: %v\n", err)
 		os.Exit(1)
 	}
-	// set number of threads if not provided by user
-	if options.Threads == 0 {
-		options.Threads = byte(runtime.GOMAXPROCS(0))
-	}
-	// enable TCP by default
-	options.UseTCPScan = true
 
 	// parse and validate CIDR/address
 	addrParser := network.NewAddrParser()
 	addrParser.SetVerbosity(options.IsVerbose)
 	err = addrParser.ParseCidrOrAddr(options.CIDR)
 	if err != nil {
-		fmt.Printf("Error parsing CIDR/address: %v\n", err)
+		pterm.Error.Printfln("Error parsing CIDR/address: %v\n", err)
 		os.Exit(1)
 	}
+
+	// set number of threads if not provided by user
+	if options.Threads == 0 {
+		options.Threads = byte(runtime.GOMAXPROCS(0))
+	}
+	// enable TCP by default
+	options.UseTCPScan = true
 
 	/*
 		fmt.Println("CIDR string:", options.CIDR)
@@ -56,10 +59,16 @@ func main() {
 	scannerOptions := &scanners.ScannersManagerOptions{
 		IncludeTCPScan:  options.UseTCPScan,
 		IncludeICMPPing: options.UsePing,
-		// more scanner types...
+		// TODO more scanner types...
 		IsVerbose: options.IsVerbose,
 	}
 	scannerManager := scanners.NewScannersManager(scannerOptions)
+
+	pterm.Info.Printfln("Target: %v", addrParser.GetCIDR())
+	pterm.Info.Printfln("Scan methods: %s",
+		strings.Join(scannerManager.GetNames(), ", "))
+	pterm.Info.Printfln("Using %d threads", options.Threads)
+	spinnerInfo, _ := pterm.DefaultSpinner.Start("Scanning...")
 
 	// prepare scanning
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -69,8 +78,6 @@ func main() {
 	var muResults sync.Mutex
 
 	// start scanning
-	fmt.Printf("Starting scan of %v using %d threads\n", addrParser.GetCIDR(), options.Threads)
-
 	var wg sync.WaitGroup
 	wg.Go(func() {
 		// copy results to output slice
@@ -101,13 +108,13 @@ func main() {
 				sem <- struct{}{}
 
 				if options.IsVerbose {
-					fmt.Printf("Queued %v\n", addr)
+					pterm.ThemeDefault.InfoMessageStyle.Printfln("Queued %v\n", addr)
 				}
 				// execute scanning steps and send the result
 				wgWorkers.Go(func() {
 					defer func() { <-sem }()
 					if options.IsVerbose {
-						fmt.Printf("Scanning %v\n", addr)
+						pterm.ThemeDefault.InfoMessageStyle.Printfln("Scanning %v\n", addr)
 					}
 					steps := scannerManager.GetSteps()
 					target := &scanners.Target{
@@ -140,6 +147,15 @@ func main() {
 		wgConsumer.Wait()
 	})
 	wg.Wait()
+
+	select {
+	case <-ctx.Done():
+		spinnerInfo.UpdateText("Interrupted!")
+		spinnerInfo.Warning()
+	default:
+		spinnerInfo.UpdateText("Finished!")
+		spinnerInfo.Success()
+	}
 
 	// TODO process the results
 	/*fmt.Println()

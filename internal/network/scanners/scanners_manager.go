@@ -36,3 +36,11 @@ func (m *ScannersManager) GetScanner(step int) (Scanner, error) {
 	}
 	return m.scanners[step], nil
 }
+
+func (m *ScannersManager) GetNames() []string {
+	result := make([]string, 0, len(m.scanners))
+	for _, s := range m.scanners {
+		result = append(result, s.GetName())
+	}
+	return result
+}
