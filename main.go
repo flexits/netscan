@@ -94,11 +94,18 @@ func main() {
 				case <-ctx.Done():
 					return
 				default:
-					muResults.Lock()
-					results = append(results, r)
-					muResults.Unlock()
+					if r.GetState() != scanners.HostDead {
+						muResults.Lock()
+						results = append(results, r)
+						muResults.Unlock()
+					}
 				}
 			}
+			muResults.Lock()
+			sort.Slice(results, func(i, j int) bool {
+				return results[i].Address.Compare(results[j].Address) < 0
+			})
+			muResults.Unlock()
 		})
 
 		// run a number of workers limited by options.Threads
@@ -171,6 +178,7 @@ func main() {
 		fmt.Println()
 	}*/
 
-	time.Sleep(250 * time.Millisecond)
+	// grant time for goroutines to finish
+	time.Sleep(500 * time.Millisecond)
 	os.Exit(0)
 }
