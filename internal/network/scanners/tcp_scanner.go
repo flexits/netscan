@@ -18,13 +18,13 @@ func NewTCPScanner() *TCPScanner {
 	return &TCPScanner{}
 }
 
-func (s *TCPScanner) Name() string {
+func (s *TCPScanner) GetName() string {
 	return "TCP Scan"
 }
 
 func (s *TCPScanner) Scan(ctx context.Context, addr netip.Addr) (*ScanResult, error) {
 	result := &ScanResult{
-		ScannerName: s.Name(),
+		ScannerName: s.GetName(),
 		Status:      "scanned",
 	}
 	select {

@@ -16,13 +16,13 @@ func NewPingScanner() *PingScanner {
 	return &PingScanner{}
 }
 
-func (s *PingScanner) Name() string {
+func (s *PingScanner) GetName() string {
 	return "ICMP Ping"
 }
 
 func (s *PingScanner) Scan(ctx context.Context, addr netip.Addr) (*ScanResult, error) {
 	result := &ScanResult{
-		ScannerName: s.Name(),
+		ScannerName: s.GetName(),
 		Status:      "scanned",
 	}
 	select {

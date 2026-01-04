@@ -9,7 +9,7 @@ import (
 
 const strUsage = "<IP address or CIDR range> [OPTIONS]"
 
-const strDesription = `
+const strDescription = `
 netscan is a program that allows to discover devices on the local network.
 
 CIDR range format example:
@@ -42,7 +42,7 @@ type OptionsParser struct {
 func NewOptionsParser() *OptionsParser {
 	options := &cliOptions{}
 	parser := flags.NewParser(options, flags.Default)
-	parser.LongDescription = strDesription
+	parser.LongDescription = strDescription
 	parser.Usage = strUsage
 	return &OptionsParser{
 		opts:   options,

@@ -21,5 +21,5 @@ type Target struct {
 
 type Scanner interface {
 	Scan(ctx context.Context, addr netip.Addr) (*ScanResult, error)
-	Name() string
+	GetName() string
 }
