@@ -3,6 +3,7 @@ package network
 import (
 	"errors"
 	"iter"
+	"math/big"
 	"net"
 	"net/netip"
 )
@@ -144,4 +145,34 @@ func calculateLastHostInRange(prefix netip.Prefix) (netip.Addr, error) {
 	}
 
 	return last, nil
+}
+
+func calculateRangeLength(prefix netip.Prefix) (*big.Int, error) {
+	// Range length is needed to display progress bars
+
+	// TODO check and test this
+	// Test cases:
+	// 192.168.10.0/24 has a total of 256 addresses
+	// 2001:db8::/32 has a total of 79228162514264337593543950336 addresses
+	// 10.0.0.0/8 has a total of 16777216 addresses
+	// 192.168.1.1/32 has a total of 1 address
+
+	// Determine total bits based on IP version
+	var totalBits int
+	if prefix.Addr().Is4() {
+		totalBits = 32
+	} else {
+		totalBits = 128
+	}
+
+	// Calculate the number of host bits
+	hostBits := totalBits - prefix.Bits()
+	if hostBits < 0 {
+		return nil, errors.New("invalid CIDR prefix length")
+	}
+
+	// The total number of addresses is 2^hostBits.
+	// Use math/big for potentially huge IPv6 counts.
+	count := new(big.Int).Exp(big.NewInt(2), big.NewInt(int64(hostBits)), nil)
+	return count, nil
 }
