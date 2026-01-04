@@ -8,9 +8,10 @@ import (
 )
 
 type AddrParser struct {
-	isVerbose  bool // TODO verbosity is not implemented yet
 	hostsFirst netip.Addr
 	hostsLast  netip.Addr
+	cidr       netip.Prefix
+	isVerbose  bool // TODO verbosity is not implemented yet
 }
 
 // AddrParser performs parsing of CIDR notation or single IP address string.
@@ -30,6 +31,11 @@ func (p *AddrParser) GetHostsFirst() netip.Addr {
 // Get last host address in the parsed range.
 func (p *AddrParser) GetHostsLast() netip.Addr {
 	return p.hostsLast
+}
+
+// Get CIDR prefix of the parsed range.
+func (p *AddrParser) GetCIDR() netip.Prefix {
+	return p.cidr
 }
 
 // Iterates over all host addresses in the parsed range,
@@ -62,19 +68,21 @@ func (p *AddrParser) ParseCidrOrAddr(s string) error {
 		}
 		p.hostsFirst = ip
 		p.hostsLast = ip
+		p.cidr = netip.PrefixFrom(ip, ip.BitLen())
 		return nil
 	}
 	// it's a CIDR range
-	return p.populateHosts(prefix)
+	prefix = prefix.Masked()
+	p.cidr = prefix
+	return p.populateHosts()
 }
 
-func (p *AddrParser) populateHosts(prefix netip.Prefix) error {
-	prefix = prefix.Masked()
-	network := prefix.Addr()
+func (p *AddrParser) populateHosts() error {
+	network := p.cidr.Addr()
 	if !network.IsValid() {
 		return errors.New("invalid start address")
 	}
-	bits := prefix.Bits()
+	bits := p.cidr.Bits()
 	if bits == 32 || bits == 128 {
 		// single address
 		p.hostsFirst = network
@@ -92,7 +100,7 @@ func (p *AddrParser) populateHosts(prefix netip.Prefix) error {
 		return nil
 	}
 	// larger networks
-	last, err := calculateLastHostInRange(prefix)
+	last, err := calculateLastHostInRange(p.cidr)
 	if err != nil {
 		return err
 	}
