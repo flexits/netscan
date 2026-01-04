@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -25,7 +24,7 @@ func main() {
 		if errors.Is(err, ui.ErrHelpShown) {
 			os.Exit(0)
 		}
-		pterm.Error.Printfln("Error parsing options: %v\n", err)
+		ui.ShowLabeledError("Error parsing options: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -34,7 +33,7 @@ func main() {
 	addrParser.SetVerbosity(options.IsVerbose)
 	err = addrParser.ParseCidrOrAddr(options.CIDR)
 	if err != nil {
-		pterm.Error.Printfln("Error parsing CIDR/address: %v\n", err)
+		ui.ShowLabeledError("Error parsing CIDR/address: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -64,10 +63,7 @@ func main() {
 	}
 	scannerManager := scanners.NewScannersManager(scannerOptions)
 
-	pterm.Info.Printfln("Target: %v", addrParser.GetCIDR())
-	pterm.Info.Printfln("Scan methods: %s",
-		strings.Join(scannerManager.GetNames(), ", "))
-	pterm.Info.Printfln("Using %d threads", options.Threads)
+	ui.ShowInstanceInfo(options, addrParser, scannerManager)
 	spinnerInfo, _ := pterm.DefaultSpinner.Start("Scanning...")
 
 	// prepare scanning
@@ -108,13 +104,13 @@ func main() {
 				sem <- struct{}{}
 
 				if options.IsVerbose {
-					pterm.ThemeDefault.InfoMessageStyle.Printfln("Queued %v\n", addr)
+					ui.ShowInfoString("Queued %v\n", addr)
 				}
 				// execute scanning steps and send the result
 				wgWorkers.Go(func() {
 					defer func() { <-sem }()
 					if options.IsVerbose {
-						pterm.ThemeDefault.InfoMessageStyle.Printfln("Scanning %v\n", addr)
+						ui.ShowInfoString("Scanning %v\n", addr)
 					}
 					steps := scannerManager.GetSteps()
 					target := &scanners.Target{
