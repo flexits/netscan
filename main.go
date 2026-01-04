@@ -9,12 +9,15 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
 
 	"github.com/pterm/pterm"
 )
+
+const version = "v.0.1"
 
 func main() {
 	// parse command line arguments
@@ -52,6 +55,7 @@ func main() {
 		fmt.Println("Threads:", options.Threads)
 		fmt.Println("First host address:", addrParser.GetHostsFirst())
 		fmt.Println("Last host address:", addrParser.GetHostsLast())
+		fmt.Println("Hosts count:", addrParser.GetHostsLength())
 	*/
 
 	// configure scanners
@@ -63,7 +67,11 @@ func main() {
 	}
 	scannerManager := scanners.NewScannersManager(scannerOptions)
 
-	ui.ShowInstanceInfo(options, addrParser, scannerManager)
+	ui.ShowLabeledInfo("netscan %s", version)
+	ui.ShowLabeledInfo("Target: %v", addrParser.GetCIDR())
+	ui.ShowLabeledInfo("Scan methods: %s",
+		strings.Join(scannerManager.GetNames(), ", "))
+	ui.ShowLabeledInfo("Using %d threads", options.Threads)
 	spinnerInfo, _ := pterm.DefaultSpinner.Start("Scanning...")
 
 	// prepare scanning
