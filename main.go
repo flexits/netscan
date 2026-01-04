@@ -3,12 +3,12 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"netscan/internal/network"
 	"netscan/internal/network/scanners"
 	"netscan/internal/ui"
 	"os"
 	"os/signal"
-	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -28,7 +28,7 @@ func main() {
 		if errors.Is(err, ui.ErrHelpShown) {
 			os.Exit(0)
 		}
-		ui.ShowLabeledError("Error parsing options: %v\n", err)
+		ui.PrintflnLabeledError("Error parsing options: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -37,13 +37,15 @@ func main() {
 	addrParser.SetVerbosity(options.IsVerbose)
 	err = addrParser.ParseCidrOrAddr(options.CIDR)
 	if err != nil {
-		ui.ShowLabeledError("Error parsing CIDR/address: %v\n", err)
+		ui.PrintflnLabeledError("Error parsing CIDR/address: %v\n", err)
 		os.Exit(1)
 	}
 
 	// set number of threads if not provided by user
 	if options.Threads == 0 {
-		options.Threads = byte(runtime.GOMAXPROCS(0))
+		//options.Threads = byte(runtime.GOMAXPROCS(0))
+		// we are i/o-bound, not cpu-bound, so may increase the number
+		options.Threads = 128
 	}
 	// enable TCP by default
 	options.UseTCPScan = true
@@ -68,11 +70,11 @@ func main() {
 	}
 	scannerManager := scanners.NewScannersManager(scannerOptions)
 
-	ui.ShowLabeledInfo("netscan %s", version)
-	ui.ShowLabeledInfo("Target: %v", addrParser.GetCIDR())
-	ui.ShowLabeledInfo("Scan methods: %s",
+	ui.PrintflnLabeledInfo("netscan %s", version)
+	ui.PrintflnLabeledInfo("Target: %v", addrParser.GetCIDR())
+	ui.PrintflnLabeledInfo("Scan methods: %s",
 		strings.Join(scannerManager.GetNames(), ", "))
-	ui.ShowLabeledInfo("Using %d threads", options.Threads)
+	ui.PrintflnLabeledInfo("Using %d threads", options.Threads)
 	spinnerInfo, _ := pterm.DefaultSpinner.Start("Scanning...")
 
 	// prepare scanning
@@ -120,13 +122,13 @@ func main() {
 				sem <- struct{}{}
 
 				if options.IsVerbose {
-					ui.ShowInfoString("Queued %v\n", addr)
+					ui.PrintflnInfo("Queued %v\n", addr)
 				}
 				// execute scanning steps and send the result
 				wgWorkers.Go(func() {
 					defer func() { <-sem }()
 					if options.IsVerbose {
-						ui.ShowInfoString("Scanning %v\n", addr)
+						ui.PrintflnInfo("Scanning %v\n", addr)
 					}
 					steps := scannerManager.GetSteps()
 					target := &scanners.TargetInfo{
@@ -169,14 +171,21 @@ func main() {
 	}
 
 	// TODO process the results
-	/*fmt.Println()
+	fmt.Println()
 	for _, r := range results {
-		fmt.Printf("Scanned %v with results:\n", r.Address)
-		for _, s := range r.Results {
-			fmt.Printf("%s: %s\n", s.ScannerName, s.Status)
+		state := r.GetState()
+		if state == scanners.HostAlive {
+			ui.PrintflnSuccess("Scanned %v with state %d", r.Address, state)
+		} else {
+			fmt.Printf("Scanned %v with state %d\n", r.Address, state)
 		}
-		fmt.Println()
-	}*/
+		/*
+			for _, c := range r.Comments {
+				fmt.Println(c)
+			}
+			fmt.Println()
+		*/
+	}
 
 	// grant time for goroutines to finish
 	time.Sleep(500 * time.Millisecond)
