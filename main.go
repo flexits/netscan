@@ -65,6 +65,7 @@ func main() {
 	scannerOptions := &scanners.ScannersManagerOptions{
 		IncludeTCPScan:  options.UseTCPScan,
 		IncludeICMPPing: options.UsePing,
+		IncludeNbstat:   options.UseNbstat,
 		// TODO more scanner types...
 		IsVerbose: options.IsVerbose,
 	}
@@ -141,13 +142,10 @@ func main() {
 						default:
 							scanner, err := scannerManager.GetScanner(step)
 							if err != nil {
-								break
-							}
-							// TODO get rid of the hardcoded timeout
-							err = scanner.ScanTimeout(ctx, target, 1*time.Second)
-							if err != nil {
 								continue
 							}
+							// TODO get rid of the hardcoded timeout
+							scanner.ScanTimeout(ctx, target, 1*time.Second)
 						}
 					}
 					out <- target
@@ -176,6 +174,7 @@ func main() {
 		state := r.GetState()
 		if state == scanners.HostAlive {
 			ui.PrintflnSuccess("Scanned %v with state %d", r.Address, state)
+			fmt.Printf("%s %s\n", r.Mac, r.HostName)
 		} else {
 			fmt.Printf("Scanned %v with state %d\n", r.Address, state)
 		}

@@ -5,6 +5,7 @@ type Options struct {
 	CIDR           string
 	IsVerbose      bool
 	UseTCPScan     bool
+	UseNbstat      bool
 	UsePing        bool
 	UseFingerprint bool
 	UseBannerGrab  bool

@@ -16,6 +16,7 @@ type Scanner interface {
 type ScannersManagerOptions struct {
 	IncludeTCPScan  bool
 	IncludeICMPPing bool
+	IncludeNbstat   bool
 	// more scanner types...
 	IsVerbose bool // TODO not implemented yet
 }
@@ -33,6 +34,9 @@ func NewScannersManager(options *ScannersManagerOptions) *ScannersManager {
 	}
 	if options.IncludeICMPPing {
 		s.scanners = append(s.scanners, NewPingScanner())
+	}
+	if options.IncludeNbstat {
+		s.scanners = append(s.scanners, NewNbstatScanner())
 	}
 	s.steps = len(s.scanners)
 	return s
