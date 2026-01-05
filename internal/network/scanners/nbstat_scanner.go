@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -85,13 +86,19 @@ var requestBlobe = []byte{
 }
 
 type NbstatScanner struct {
-	dialer *net.Dialer
+	dialer    *net.Dialer
+	bytesPool *sync.Pool
 }
 
 func NewNbstatScanner() *NbstatScanner {
 	return &NbstatScanner{
 		dialer: &net.Dialer{
 			KeepAlive: -1,
+		},
+		bytesPool: &sync.Pool{
+			New: func() any {
+				return make([]byte, 512)
+			},
 		},
 	}
 }
@@ -121,7 +128,8 @@ func (s *NbstatScanner) ScanTimeout(ctx context.Context, target *TargetInfo, tim
 		if err != nil {
 			return err
 		}
-		buf := make([]byte, 512)
+		buf := s.bytesPool.Get().([]byte)
+		defer s.bytesPool.Put(buf)
 		n, err := conn.Read(buf)
 		if err != nil {
 			return err
