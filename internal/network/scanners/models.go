@@ -1,6 +1,9 @@
 package scanners
 
-import "net/netip"
+import (
+	"net/netip"
+	"strconv"
+)
 
 // Represents a network device state.
 type HostState int
@@ -10,6 +13,19 @@ const (
 	HostUnknown
 	HostAlive
 )
+
+func (s HostState) String() string {
+	switch s {
+	case HostDead:
+		return "Offline"
+	case HostUnknown:
+		return "Unknown"
+	case HostAlive:
+		return "Online"
+	default:
+		return strconv.Itoa(int(s))
+	}
+}
 
 // Host scan results.
 type TargetInfo struct {
