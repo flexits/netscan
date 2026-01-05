@@ -48,7 +48,9 @@ func main() {
 		options.Threads = 128
 	}
 	// enable TCP by default
-	options.UseTCPScan = true
+	if !options.IsAnyScanSelected() {
+		options.UseTCPScan = true
+	}
 
 	/*
 		fmt.Println("CIDR string:", options.CIDR)

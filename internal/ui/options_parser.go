@@ -18,6 +18,7 @@ CIDR range format example:
 // Options definition for jessevdk/go-flags package.
 type cliOptions struct {
 	Verbose bool `short:"v" long:"verbose" description:"Verbose output"`
+	Tcp     bool `short:"c" long:"tcp" description:"Enable TCP connect probing"`
 	Ping    bool `short:"p" long:"ping" description:"Enable ping (ICMP echo) scanning"`
 	Nbstat  bool `short:"n" long:"nbstat" description:"Enable NetBIOS NBSTAT probing (IPv4 only)"`
 	Threads byte `short:"t" long:"threads" description:"Override number of concurrent threads to use"`
@@ -69,10 +70,11 @@ func (p *OptionsParser) ParseArgs() (*Options, error) {
 		return nil, ErrHelpShown
 	}
 	return &Options{
-		CIDR:      args[0],
-		IsVerbose: p.opts.Verbose,
-		UsePing:   p.opts.Ping,
-		UseNbstat: p.opts.Nbstat,
-		Threads:   p.opts.Threads,
+		CIDR:       args[0],
+		IsVerbose:  p.opts.Verbose,
+		UsePing:    p.opts.Ping,
+		UseNbstat:  p.opts.Nbstat,
+		UseTCPScan: p.opts.Tcp,
+		Threads:    p.opts.Threads,
 	}, nil
 }

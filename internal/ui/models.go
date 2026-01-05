@@ -11,3 +11,8 @@ type Options struct {
 	UseBannerGrab  bool
 	Threads        byte
 }
+
+// Returns true is any of the available scanners is selected for usage.
+func (o *Options) IsAnyScanSelected() bool {
+	return o.UseTCPScan || o.UsePing || o.UseNbstat
+}
