@@ -71,7 +71,7 @@ func main() {
 	}
 	scannerManager := scanners.NewScannersManager(scannerOptions)
 
-	ui.PrintflnLabeledInfo("netscan %s", version)
+	ui.PrintflnInfo("netscan %s", version)
 	ui.PrintflnLabeledInfo("Target: %v", addrParser.GetCIDR())
 	ui.PrintflnLabeledInfo("Scan methods: %s",
 		strings.Join(scannerManager.GetNames(), ", "))
@@ -173,10 +173,16 @@ func main() {
 	for _, r := range results {
 		state := r.GetState()
 		if state == scanners.HostAlive {
-			ui.PrintflnSuccess("Scanned %v with state %d", r.Address, state)
-			fmt.Printf("%s %s\n", r.Mac, r.HostName)
+			ui.PrintflnSuccess("%v is %s", r.Address, state)
+			if len(r.Mac) > 0 {
+				fmt.Printf("    %s\n", r.Mac)
+			}
+			if len(r.HostName) > 0 {
+				fmt.Printf("    %s\n", r.HostName)
+			}
+			fmt.Println()
 		} else {
-			fmt.Printf("Scanned %v with state %d\n", r.Address, state)
+			fmt.Printf("Scanned %v with state %s\n", r.Address, state)
 		}
 		/*
 			for _, c := range r.Comments {
