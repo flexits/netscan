@@ -23,7 +23,8 @@ func (s *PingScanner) ScanTimeout(ctx context.Context, target *TargetInfo, timeo
 	case <-ctx.Done():
 		return ctx.Err()
 	default:
-		// TODO actual implementation here with ICMP echo
+		// TODO actual implementation here
+		// https://pkg.go.dev/golang.org/x/net/icmp#example-PacketConn-NonPrivilegedPing
 	}
 	return nil
 }

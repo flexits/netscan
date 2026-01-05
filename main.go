@@ -182,6 +182,9 @@ func main() {
 			if len(r.HostName) > 0 {
 				fmt.Printf("    %s\n", r.HostName)
 			}
+			/*if len(r.Comments) > 0 {
+				fmt.Println(r.Comments[0])
+			}*/
 			fmt.Println()
 		} else {
 			fmt.Printf("Scanned %v with state %s\n", r.Address, state)
