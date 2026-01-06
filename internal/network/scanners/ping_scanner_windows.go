@@ -37,9 +37,7 @@ var (
 	procIcmpSendEcho2   = modIphlpapi.NewProc("IcmpSendEcho2")
 )
 
-type PingScanner struct {
-	// configuration fields if needed
-}
+type PingScanner struct{}
 
 // This scanner performs ping (ICMP echo) scan
 func NewPingScanner() *PingScanner {
@@ -56,25 +54,21 @@ func (s *PingScanner) ScanTimeout(ctx context.Context, target *TargetInfo, timeo
 		return ctx.Err()
 	default:
 		if !target.Address.Is4() {
-			// TODO implement IPv6
+			// TODO implement IPv6 with Icmp6SendEcho2
 			return errors.New("IPv6 ping not implemented")
 		}
 		h, _, err := procIcmpCreateFile.Call()
 		if h == 0 {
-			//fmt.Printf("Error in procIcmpCreateFile: %s\n", err.Error())
 			return err
 		}
 		defer procIcmpCloseHandle.Call(h)
+
 		payload := []byte("HELLO-R-U-THERE")
-		//replySize := 3 * (unsafe.Sizeof(icmpEchoReply{}) + uintptr(len(payload)+64))
-		replySize := 1024
+
+		replySize := 256
 		replyBuf := make([]byte, replySize) // TODO sync.Pool
-		ip4 := target.Address.As4()
-		ip := uint32(ip4[0])<<24 |
-			uint32(ip4[1])<<16 |
-			uint32(ip4[2])<<8 |
-			uint32(ip4[3])
-		//fmt.Println(ip)
+
+		ip := uint32FromAddr(target.Address)
 
 		r, _, err := procIcmpSendEcho2.Call(
 			h,
@@ -87,44 +81,40 @@ func (s *PingScanner) ScanTimeout(ctx context.Context, target *TargetInfo, timeo
 			0,
 			uintptr(unsafe.Pointer(&replyBuf[0])),
 			uintptr(replySize),
-			uintptr(timeout.Milliseconds()),
+			uintptr(3000),
 		)
-
 		if r == 0 {
-			//errno := windows.GetLastError()
-			//fmt.Printf("Error in procIcmpSendEcho2 on %v: errno %v; err %s\n", ip4, errno, err)
 			return err
 		}
 
 		reply := (*icmpEchoReply)(unsafe.Pointer(&replyBuf[0]))
-		//fmt.Printf("Reply status: %d of %v\n", reply.Status, addrFromUint32(reply.Address))
-		/*
-			if reply.Data != nil {
-				fmt.Printf("Reply data: %d\n", *reply.Data)
-			}
-			if reply.Options.OptionsData != nil {
-				fmt.Printf("Reply options data: %d\n", *reply.Options.OptionsData)
-			}
-			if reply.Status != 0 {
-				return fmt.Errorf("icmp status %d", reply.Status)
-			}
-			fmt.Println(reply)
-		*/
-		target.state = HostAlive
-		target.Comments = append(target.Comments,
-			fmt.Sprintf("ICMP Echo Responses = %d\n", r))
-		target.Comments = append(target.Comments,
-			fmt.Sprintf("Reply status: %d of %v\n", reply.Status, addrFromUint32(reply.Address)))
+		if reply.Status == 0 {
+			// ping succeeded
+			target.state = HostAlive
+			target.Comments = append(target.Comments,
+				fmt.Sprintf("ICMP Echo RTT %d ms", reply.RoundTripTime))
+		}
+
 		return nil
 	}
 }
 
+// Convert uint32, compatible with IN_ADDR struct, into netip.Addr
 func addrFromUint32(u uint32) netip.Addr {
 	b := [4]byte{
-		byte(u >> 24),
-		byte(u >> 16),
-		byte(u >> 8),
 		byte(u),
+		byte(u >> 8),
+		byte(u >> 16),
+		byte(u >> 24),
 	}
 	return netip.AddrFrom4(b)
+}
+
+// Convert IPv4 netip.Addr into uint32, compatible with IN_ADDR struct
+func uint32FromAddr(a netip.Addr) uint32 {
+	ip4 := a.As4()
+	return uint32(ip4[3])<<24 |
+		uint32(ip4[2])<<16 |
+		uint32(ip4[1])<<8 |
+		uint32(ip4[0])
 }
