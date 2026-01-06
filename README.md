@@ -1,5 +1,7 @@
 # netscan
 
+<img width="600" alt="netscan-main-1" src="https://github.com/user-attachments/assets/ed181049-bd7b-4be3-adc6-5577527f3561" />
+
 A console utility to discover local network hosts (devices).
 
 **Designed for speed**: utilizes a customizable network scanning/probing pipeline in parallel mode. By default, uses up to 128 concurrent threads, completing a standard /24 SOHO subnet in a matter of seconds.
@@ -8,7 +10,7 @@ A console utility to discover local network hosts (devices).
 
 **Cross-platform**: Windows, Linux, macOS; and **portable**: the built binary contains all required dependencies within itself and may safely be copied wherever it's needed.
 
-And, of course, **colored** console output with spinner :)
+And, of course, **colored** console output with spinner 😊
 
 *Disclaimer:* The application is in the **alpha stage**, not all planned features are implemented yet, and there may be bugs as well.
 
@@ -18,7 +20,7 @@ And, of course, **colored** console output with spinner :)
 
 The scan target is passed as an IP or CIDR string. In the latter case, network and broadcast IPv4 addresses are automatically omitted from the scan range.  
 Only private networks are allowed.  
-There's a limit of 65,536 addresses per single scan. This is not due to any code limitations, just an arbitrary decision like "ought to be enough for anybody" 😉
+There's a limit of 65,536 addresses per single scan. *This is not due to any code limitations, just an arbitrary decision like "ought to be enough for anybody"* 😉
 
 Options are used to configure the scanning pipeline. Each target address is challenged with different detection/probing methods sequentially. Currently available options are:  
 `-c`, `--tcp`     TCP connection probe *(not tested with IPv6 yet)*  
@@ -64,7 +66,7 @@ First of all, **external libraries**: [pterm](https://github.com/pterm/pterm) to
 
 ### Execution pipeline
 
-The target address range is processed, validated, and its boundaries (first and last addresses) are determined. To save memory (RAM is 💰 these days, isn’t it?), we do not pre-generate an array of target addresses for the range; instead, the next address is calculated dynamically on demand.
+The target address range is processed, validated, and its boundaries (first and last addresses) are determined. To save memory (RAM is a bit 💰 pricey these days, isn’t it?), we do not pre-generate an array of target addresses for the range; instead, the next address is calculated dynamically on demand.
 
 Each detection method is implemented as a discrete thread-safe piece of code. All scanners have a uniform **Scanner** interface and there's a **ScannersManager** service that takes the parsed user input and creates only the needed scanners. Every scanner has 1 second timeout (maybe will fine-tune later if needed).
 
