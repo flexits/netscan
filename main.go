@@ -177,24 +177,25 @@ func main() {
 		if state == scanners.HostAlive {
 			ui.PrintflnSuccess("%v is %s", r.Address, state)
 			if len(r.Mac) > 0 {
-				fmt.Printf("    %s\n", r.Mac)
+				fmt.Printf("\t%s\n", r.Mac)
 			}
 			if len(r.HostName) > 0 {
-				fmt.Printf("    %s\n", r.HostName)
+				fmt.Printf("\t%s\n", r.HostName)
+			}
+			if len(r.Workgroup) > 0 {
+				fmt.Printf("\t%s\n", r.Workgroup)
 			}
 			/*if len(r.Comments) > 0 {
 				fmt.Println(r.Comments[0])
 			}*/
-			fmt.Println()
+			//fmt.Println()
 		} else {
 			fmt.Printf("Scanned %v with state %s\n", r.Address, state)
 		}
-		/*
-			for _, c := range r.Comments {
-				fmt.Println(c)
-			}
-			fmt.Println()
-		*/
+		for _, c := range r.Comments {
+			fmt.Printf("\t\t%s\n", c)
+		}
+		fmt.Println()
 	}
 
 	// grant time for goroutines to finish
