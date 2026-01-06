@@ -29,10 +29,11 @@ func (s HostState) String() string {
 
 // Host scan results.
 type TargetInfo struct {
-	Address  netip.Addr
-	state    HostState
-	Mac      string
-	HostName string
+	Address   netip.Addr
+	state     HostState
+	Mac       string
+	HostName  string
+	Workgroup string
 	// whatever else...
 	Comments []string
 }

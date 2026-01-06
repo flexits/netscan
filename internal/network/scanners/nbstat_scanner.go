@@ -1,6 +1,7 @@
 package scanners
 
 import (
+	"bytes"
 	"context"
 	"encoding/binary"
 	"errors"
@@ -55,8 +56,10 @@ import (
 	RDATA:
 	NUM_NAMES (1 byte)   Number of entries in this section
 	NODE_NAME (16 bytes) 15-byte name, padded with spaces, and 1-byte suffix:
-	                     00 - workstation, 20 - server, etc.
-	NAME_FLAGS (2 bytes)
+	                     00 - workstation etc. (https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-brws/0c773bdd-78e2-4d8b-8b3d-b7506849847b)
+	NAME_FLAGS (2 bytes) see RFC 1002 4.2.18. We are interested only in the leftmost bit:
+	                     1 for group name, 0 for machine name.
+
 	    // name and flags may be repeated if NUM_NAMES > 1
 		// or may be absent if NUM_NAMES == 0
 
@@ -83,6 +86,11 @@ var requestBlobe = []byte{
 
 	0x00, 0x21, // Type: NBSTAT
 	0x00, 0x01, // Class: IN
+}
+
+var msBrwsGroup = []byte{
+	0x01, 0x02, 0x5F, 0x5F, 0x4D, 0x53, 0x42, 0x52,
+	0x4F, 0x57, 0x53, 0x45, 0x5F, 0x5F, 0x02, //0x01, - checked as suffix
 }
 
 type NbstatScanner struct {
@@ -203,16 +211,34 @@ func (s *NbstatScanner) parseNbstatResponse(buf []byte, target *TargetInfo) erro
 		}
 		// check for workstation name
 		suffix := buf[pos+15]
-		if suffix == 0x00 {
+		switch suffix {
+		case 0x00:
+			// workstation service name
 			name := strings.TrimSpace(string(buf[pos : pos+15]))
+			flag := buf[pos+16]
 			if len(name) > 0 {
-				if len(target.HostName) == 0 {
-					target.HostName = name
+				if flag&0x80 != 0 {
+					// group name
+					target.Workgroup = name
 				} else {
-					// there's already a name present,
-					// but let's save what we received
-					target.Comments = append(target.Comments, name)
+					// machine name
+					target.HostName = name
 				}
+				/*
+					// TODO use setter for this
+					if len(target.HostName) == 0 {
+						target.HostName = name
+					} else {
+						// there's already a name present,
+						// but let's save what we received
+						target.Comments = append(target.Comments, name)
+					}
+				*/
+			}
+		case 0x01:
+			// fingerprint MS CIFS Browser Protocol
+			if bytes.Equal(buf[pos:pos+15], msBrwsGroup) {
+				target.Comments = append(target.Comments, "MS CIFS Browser Protocol (MS-BRWS)")
 			}
 		}
 		pos += 18
