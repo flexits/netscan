@@ -2,93 +2,80 @@
 
 A console utility to discover local network hosts (devices).
 
-**It's a draft, not usable yet!**
+**Designed for speed**: utilizes a customizable network scanning/probing pipeline in parallel mode. By default, uses up to 128 concurrent threads, completing a standard /24 SOHO subnet in a matter of seconds.
 
-## Capabilities
+**No elevated privileges** required, runs completely in user-space. However, this imposes certain restrictions, not all scanning/probing methods can be implemented.
 
-Scan target is passed as an IP/CIDR string. In the latter case, network and broadcast IPv4 addresses are automatically omitted from the scan range.
+**Cross-platform**: Windows, Linux, macOS; and **portable**: the built binary contains all required dependencies within itself and may safely be copied wherever it's needed.
 
-Scan types are configured via command line switches.
+And, of course, **colored** console output with spinner :)
 
-## Under the hood
+*Disclaimer:* The application is in the **alpha stage**, not all planned features are implemented yet, and there may be bugs as well.
 
-### Architecture consideration
+## Usage
 
-A scanner is a distinct fragment of code performing only one task - TCP scan, ICMP echo etc.
-A scanner is initialized with a target host address and returns a structure - scan result.
+`netscan <IP address or CIDR range> [OPTIONS]`
 
-Application startup flag defines a number of workers to use and what scanners are needed.
-Workers scan different targets simultaneously. Required scanners form a pipeline inside of
-a worker (each target goes through the entire set of scanners - pipeline).
+The scan target is passed as an IP or CIDR string. In the latter case, network and broadcast IPv4 addresses are automatically omitted from the scan range.  
+Only private networks are allowed.  
+There's a limit of 65,536 addresses per single scan. This is not due to any code limitations, just an arbitrary decision like "ought to be enough for anybody" 😉
 
-Iterator over a range of host addresses pushes addresses into a channel in form of
-a structure containing address and a slice for scan results.
+Options are used to configure the scanning pipeline. Each target address is challenged with different detection/probing methods sequentially. Currently available options are:  
+`-c`, `--tcp`     TCP connection probe *(not tested with IPv6 yet)*  
+`-n`, `--nbstat`  NetBIOS NBSTAT probe, only IPv4, useful against Windows machines  
+`-p`, `--ping`    ICMP Echo (ping) probe *(currently only Windows and only IPv4)*  
+By default, if no options are provided, the TCP probing is used. 
 
-We use a worker pool; each worker consumes one address from a channel and starts processing it.
+The maximum number of parallel threads may be customized with `-t`, `--threads` switch. The default value is 128. One target is one thread, and one scanner takes approximately a second – that is, a ubiquitous IPv4 /24 home subnet (254 hosts) scan with all the 3 currently available scanners enabled (`-cnp` option) will last about 🚀 6 seconds. Nevertheless, you're safe to interrupt the program with `Ctrl+C` any time you wish.
 
-Each worker must implement a pipeline inside. The pipeline is constructed from
-the scanners we are using.
+## How to build
 
-Each scanner returns a scan result that is appended to the scan results slice.
+It takes 5 easy steps. Ensure you have [Go](https://go.dev/doc/install) installed in your system (only for build, not required later to run, the Go binaries are self-contained) beforehand.
 
-### Implementation consideration
+```
+# 1. Clone the repository
+git clone https://github.com/flexits/netscan
 
-A goroutine: reads addresses, writes to an input channel (unbuffered),
-then closes the channel (range iterator).
+# 2. Navigate to project directory
+cd netscan
 
-A goroutine: reads from the channel (range over channel), acquires a semaphore,
-starts a worker goroutine, releases the semaphore when done. Uses a WaitGroup
-to wait for all workers to finish, then closes the output channel.
+# 3. Download dependencies
+go mod tidy
 
-A worker goroutine: constructs a pipeline of scanners based on Options flags,
-runs each scanner in sequence, appends results to the output channel (unbuffered).
+# 4. Build the project
+go build .
 
-A goroutine: reads from the output channel (range over channel),
-stores results somewhere (a slice or similar).
+# 5. Run the application
+./netscan
+```
 
-In the end we have a slice of scan results, both channels are closed, all goroutines are done.
+## Pending features
 
-Inside of a worker: no goroutines, just sequential execution of scanners.
-Consider a pool of scanners to reuse (not sure if it's really justified).
+- Local ARP table lookup to gather MAC addresses.
+- Extend ICMP Echo functionality to IPv6 and Linux/macOS.
+- More up to date or sophisticated probing techniques: maybe mDNS/LLMNR, SCTP Init, IPv6 Neighbor Solicitation, something else.
+- Extended functionality like OS fingerprinting or banner grabbing.
 
-Each scanner must implement a context cancellation mechanism to avoid hanging.
+## Inner workings
 
-Graceful shutdown for all of the above is absolutely required!
+For those who are interested, you're not required to read this just to use the app.
 
-### Caveats
+First of all, **external libraries**: [pterm](https://github.com/pterm/pterm) to beautify console output and [go-flags](https://github.com/jessevdk/go-flags) to parse command line arguments.
 
-1. Root/admin rights needed almost for everything except net.Dial. Check with `os.Geteuid() == 0` (and on Windows?)
-2. Platform dependency?
-3. Winpcap/Npcap required on Windows
+### Execution pipeline
 
-### Network discovery methods
+The target address range is processed, validated, and its boundaries (first and last addresses) are determined. To save memory (RAM is 💰 these days, isn’t it?), we do not pre-generate an array of target addresses for the range; instead, the next address is calculated dynamically on demand.
 
-- ICMP echo (ping)
-- TCP SYN 443
-- TCP ACK 80
-- ICMP Timestamp Request (IPv4 only)
-- ARP scan (IPv4 only)
-- ARP table (_not a scan actually, contains only visited hosts_)
-- IPv6 Neighbor Solicitation (IPv6 only)
-- UDP ping 40125
-- UDP probe 53
-- SCTP init 80
+Each detection method is implemented as a discrete thread-safe piece of code. All scanners have a uniform **Scanner** interface and there's a **ScannersManager** service that takes the parsed user input and creates only the needed scanners. Every scanner has 1 second timeout (maybe will fine-tune later if needed).
 
-- mDNS discovery
-- SNMP query
-- NetBIOS
+For each target address we start a dedicated goroutine (with respect to the limit, of course - after we've hit the ceiling, we're waiting for some goroutines to complete). Inside the goroutine, we get the configured scanners from the ScannersManager and call the scanning code in sequence.
 
-Consider banner grabbing, OS fingerprinting etc.
+The scan results are filtered (the unreachable and unknown hosts are removed) and printed on the screen.
 
-Reference: Nmap host discovery techniques:
-https://nmap.org/book/man-host-discovery.html
+### Scanners
 
-### Useful packages
+TCP scanner attempts to open connection to the target host on a number of ports (80, 443, 22, 445, 3389). Uses the standard Go runtime, nothing fancy.  
 
-For packet construction:
-golang.org/x/net/ipv4
-golang.org/x/net/ipv6
+NetBIOS scanner works the same way, sends the NBSTAT question to the target's 137/UDP and waits for the answer. It's rather [ancient](https://datatracker.ietf.org/doc/html/rfc1002), only IPv4 by design and is useful mainly against [Windows](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-brws/d2d83b29-4b62-479e-b427-9b750303387b) machines (maybe also some printers and stuff like that). 
 
-https://pkg.go.dev/github.com/j-keck/arping
-
-See also: https://github.com/luijait/GONET-Scanner
+ICMP Echo scanner (Windows) utilizes `IcmpSendEcho` WinAPI function to send requests and get responses. For Linux/macOS I'll probably stick with Google's x/net/icmp package.

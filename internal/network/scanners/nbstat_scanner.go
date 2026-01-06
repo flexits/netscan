@@ -41,7 +41,7 @@ import (
 	ANCOUNT      (2 bytes)  Number of answers (1)
 	NSCOUNT      (2 bytes)
 	ARCOUNT      (2 bytes)
-	6 bytes total
+	12 bytes total
 
 	RR_NAME: the requesting name, variable length, usually the same as in the request.
 
