@@ -21,6 +21,25 @@ import (
 const version = "v.0.1"
 
 func main() {
+	/*
+		// Debug
+		fh, err := os.Create("heap.pprof")
+		if err != nil {
+			fmt.Printf("Failed to create heap.pprof %v", err)
+			os.Exit(1)
+		}
+		defer fh.Close()
+		fc, err := os.Create("cpu.pprof")
+		if err != nil {
+			fmt.Printf("Failed to create cpu.pprof %v", err)
+			os.Exit(1)
+		}
+		defer fc.Close()
+		if err := pprof.StartCPUProfile(fc); err != nil {
+			fmt.Printf("Failed to start profiling %v", err)
+			os.Exit(1)
+		}
+	*/
 	// parse command line arguments
 	optionsParser := ui.NewOptionsParser()
 	options, err := optionsParser.ParseArgs()
@@ -197,7 +216,13 @@ func main() {
 		}
 		fmt.Println()
 	}
-
+	/*
+		// Debug
+		pprof.StopCPUProfile()
+		if err = pprof.WriteHeapProfile(fh); err != nil {
+			fmt.Printf("Failed to write heap profile %v", err)
+		}
+	*/
 	// grant time for goroutines to finish
 	time.Sleep(500 * time.Millisecond)
 	os.Exit(0)

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/netip"
+	"sync"
 	"time"
 	"unsafe"
 
@@ -35,13 +36,25 @@ var (
 	procIcmpCreateFile  = modIphlpapi.NewProc("IcmpCreateFile")
 	procIcmpCloseHandle = modIphlpapi.NewProc("IcmpCloseHandle")
 	procIcmpSendEcho2   = modIphlpapi.NewProc("IcmpSendEcho2")
+
+	replySize = 256
+
+	payload = []byte("HELLO-R-U-THERE")
 )
 
-type PingScanner struct{}
+type PingScanner struct {
+	bytesPool *sync.Pool
+}
 
 // This scanner performs ping (ICMP echo) scan
 func NewPingScanner() *PingScanner {
-	return &PingScanner{}
+	return &PingScanner{
+		bytesPool: &sync.Pool{
+			New: func() any {
+				return make([]byte, replySize)
+			},
+		},
+	}
 }
 
 func (s *PingScanner) GetName() string {
@@ -63,10 +76,8 @@ func (s *PingScanner) ScanTimeout(ctx context.Context, target *TargetInfo, timeo
 		}
 		defer procIcmpCloseHandle.Call(h)
 
-		payload := []byte("HELLO-R-U-THERE")
-
-		replySize := 256
-		replyBuf := make([]byte, replySize) // TODO sync.Pool
+		replyBuf := s.bytesPool.Get().([]byte)
+		defer s.bytesPool.Put(replyBuf)
 
 		ip := uint32FromAddr(target.Address)
 
