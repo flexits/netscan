@@ -2,6 +2,7 @@ package scanners
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"strings"
 	"time"
@@ -32,6 +33,7 @@ func (s *TCPScanner) ScanTimeout(ctx context.Context, target *TargetInfo, timeou
 	case <-ctx.Done():
 		return ctx.Err()
 	default:
+		openPorts := []string{}
 		for _, port := range s.ports {
 			context, cancel := context.WithTimeout(ctx, timeout)
 			defer cancel()
@@ -62,20 +64,29 @@ func (s *TCPScanner) ScanTimeout(ctx context.Context, target *TargetInfo, timeou
 				*/
 				if strings.Contains(errStr, "refused") {
 					target.SetState(HostAlive)
-					break
+					// break here makes scan faster, but prevents open ports scanning
+					// TODO make a command switch
+					//break
 				}
 			} else {
 				// TODO fingerprint target
 				// TODO banner grabbing
+				openPorts = append(openPorts, fmt.Sprintf("%s/TCP", port))
 				conn.Close()
 				target.SetState(HostAlive)
-				break
+				// break here makes scan faster, but prevents open ports scanning
+				// TODO make a command switch
+				//break
 			}
 			/*
 				if target.GetState() == HostAlive {
 					break
 				}
 			*/
+		}
+		if len(openPorts) > 0 {
+			target.Comments = append(target.Comments,
+				fmt.Sprintf("%s open", strings.Join(openPorts, ", ")))
 		}
 	}
 	return nil
