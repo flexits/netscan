@@ -39,7 +39,7 @@ import (
 
 // Loads the system ARP table via syscall,
 // parses the contents and returns a slice of
-// IP - MAC pairs, excluding broadcast MACs.
+// IP - MAC pairs, or (nil, error) in case of an error.
 func RetrieveArpTable() ([]ArpInfo, error) {
 	buf, err := dumpArpTableSyscall()
 

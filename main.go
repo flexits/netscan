@@ -181,35 +181,34 @@ func main() {
 		// enrich results with ARP cache contents
 		if options.UseArpCache {
 			arp, err := arp.GetArpTable()
-			if err != nil {
-				return
-			}
-			muResults.Lock()
-			for _, r := range results {
-				m, ok := arp[r.Address]
-				if !ok {
-					continue
-				}
-				r.Mac = m.Mac
-				m.IsProcessed = true
-			}
-			muResults.Unlock()
-			targetCIDR := addrParser.GetCIDR()
-			for ip, m := range arp {
-				if m.IsProcessed {
-					continue
-				}
-				if !targetCIDR.Contains(ip) {
-					continue
-				}
-				res := scanners.TargetInfo{
-					Address: ip,
-					Mac:     m.Mac,
-				}
-				res.SetState(scanners.HostUnknown)
+			if err == nil {
 				muResults.Lock()
-				results = append(results, &res)
+				for _, r := range results {
+					m, ok := arp[r.Address]
+					if !ok {
+						continue
+					}
+					r.Mac = m.Mac
+					m.IsProcessed = true
+				}
 				muResults.Unlock()
+				targetCIDR := addrParser.GetCIDR()
+				for ip, m := range arp {
+					if m.IsProcessed {
+						continue
+					}
+					if !targetCIDR.Contains(ip) {
+						continue
+					}
+					res := scanners.TargetInfo{
+						Address: ip,
+						Mac:     m.Mac,
+					}
+					res.SetState(scanners.HostUnknown)
+					muResults.Lock()
+					results = append(results, &res)
+					muResults.Unlock()
+				}
 			}
 		}
 

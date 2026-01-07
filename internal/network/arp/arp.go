@@ -21,6 +21,7 @@ func GetArpTable() (map[netip.Addr]*ArpTableValue, error) {
 	}
 	result := make(map[netip.Addr]*ArpTableValue)
 	for _, v := range values {
+		// TODO move broadcast MAC detection here
 		result[v.Ip] = &ArpTableValue{
 			Mac:         v.Mac,
 			IsProcessed: false,
