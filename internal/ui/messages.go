@@ -19,3 +19,7 @@ func PrintflnInfo(format string, a ...any) {
 func PrintflnSuccess(format string, a ...any) {
 	pterm.ThemeDefault.SuccessMessageStyle.Printfln(format, a...)
 }
+
+func PrintflnWarn(format string, a ...any) {
+	pterm.ThemeDefault.WarningMessageStyle.Printfln(format, a...)
+}

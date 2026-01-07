@@ -26,7 +26,8 @@ Options are used to configure the scanning pipeline. Each target address is chal
 `-c`, `--tcp`     TCP connection probe *(not tested with IPv6 yet)*  
 `-n`, `--nbstat`  NetBIOS NBSTAT probe, only IPv4, useful against Windows machines  
 `-p`, `--ping`    ICMP Echo (ping) probe *(currently only Windows and only IPv4)*  
-By default, if no options are provided, the TCP probing is used. 
+`-a`, `--arp`     ARP passive discovery (local system cache lookup) *(currently only macOS, \*BSD)*
+By default, if no options are provided, the TCP probing with ARP passive discovery is used. 
 
 The maximum number of parallel threads may be customized with `-t`, `--threads` switch. The default value is 128. One target is one thread, and one scanner takes approximately a second – that is, a ubiquitous IPv4 /24 home subnet (254 hosts) scan with all the 3 currently available scanners enabled (`-cnp` option) will last about 🚀 6 seconds. Nevertheless, you're safe to interrupt the program with `Ctrl+C` any time you wish.
 
@@ -81,3 +82,5 @@ TCP scanner attempts to open connection to the target host on a number of ports 
 NetBIOS scanner works the same way, sends the NBSTAT question to the target's 137/UDP and waits for the answer. It's rather [ancient](https://datatracker.ietf.org/doc/html/rfc1002), only IPv4 by design and is useful mainly against [Windows](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-brws/d2d83b29-4b62-479e-b427-9b750303387b) machines (maybe also some printers and stuff like that). 
 
 ICMP Echo scanner (Windows) utilizes `IcmpSendEcho` WinAPI function to send requests and get responses. For Linux/macOS I'll probably stick with Google's x/net/icmp package.
+
+ARP parser (macOS, \*BSD) utilizes the corresponding native syscall and is based on the code of [goarp](https://github.com/juruen/goarp/blob/master/arp/arp_bsd.go) project which in it's turn is an adaptation of the \*BSD `arp` utility source code.

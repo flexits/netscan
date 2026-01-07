@@ -7,6 +7,7 @@ type Options struct {
 	UseTCPScan     bool
 	UseNbstat      bool
 	UsePing        bool
+	UseArpCache    bool
 	UseFingerprint bool
 	UseBannerGrab  bool
 	Threads        byte
@@ -14,5 +15,5 @@ type Options struct {
 
 // Returns true is any of the available scanners is selected for usage.
 func (o *Options) IsAnyScanSelected() bool {
-	return o.UseTCPScan || o.UsePing || o.UseNbstat
+	return o.UseTCPScan || o.UsePing || o.UseNbstat || o.UseArpCache
 }

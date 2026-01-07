@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"netscan/internal/network"
+	"netscan/internal/network/arp"
 	"netscan/internal/network/scanners"
 	"netscan/internal/ui"
 	"os"
@@ -69,6 +70,7 @@ func main() {
 	// enable TCP by default
 	if !options.IsAnyScanSelected() {
 		options.UseTCPScan = true
+		options.UseArpCache = true
 	}
 
 	/*
@@ -94,8 +96,11 @@ func main() {
 
 	ui.PrintflnInfo("netscan %s", version)
 	ui.PrintflnLabeledInfo("Target: %v", addrParser.GetCIDR())
-	ui.PrintflnLabeledInfo("Scan methods: %s",
-		strings.Join(scannerManager.GetNames(), ", "))
+	scanNames := scannerManager.GetNames()
+	if options.UseArpCache {
+		scanNames = append(scanNames, "ARP Table")
+	}
+	ui.PrintflnLabeledInfo("Scan methods: %s", strings.Join(scanNames, ", "))
 	ui.PrintflnLabeledInfo("Using %d threads", options.Threads)
 	spinnerInfo, _ := pterm.DefaultSpinner.Start("Scanning...")
 
@@ -125,11 +130,6 @@ func main() {
 					}
 				}
 			}
-			muResults.Lock()
-			sort.Slice(results, func(i, j int) bool {
-				return results[i].Address.Compare(results[j].Address) < 0
-			})
-			muResults.Unlock()
 		})
 
 		// run a number of workers limited by options.Threads
@@ -177,6 +177,48 @@ func main() {
 		close(out)
 		close(sem)
 		wgConsumer.Wait()
+
+		// enrich results with ARP cache contents
+		if options.UseArpCache {
+			arp, err := arp.GetArpTable()
+			if err != nil {
+				return
+			}
+			muResults.Lock()
+			for _, r := range results {
+				m, ok := arp[r.Address]
+				if !ok {
+					continue
+				}
+				r.Mac = m.Mac
+				m.IsProcessed = true
+			}
+			muResults.Unlock()
+			targetCIDR := addrParser.GetCIDR()
+			for ip, m := range arp {
+				if m.IsProcessed {
+					continue
+				}
+				if !targetCIDR.Contains(ip) {
+					continue
+				}
+				res := scanners.TargetInfo{
+					Address: ip,
+					Mac:     m.Mac,
+				}
+				res.SetState(scanners.HostUnknown)
+				muResults.Lock()
+				results = append(results, &res)
+				muResults.Unlock()
+			}
+		}
+
+		// sort the results
+		muResults.Lock()
+		sort.Slice(results, func(i, j int) bool {
+			return results[i].Address.Compare(results[j].Address) < 0
+		})
+		muResults.Unlock()
 	})
 	wg.Wait()
 
@@ -189,12 +231,20 @@ func main() {
 		spinnerInfo.Success()
 	}
 
-	// TODO process the results
+	// process the results
+	// TODO refact this spaghetti
 	fmt.Println()
 	for _, r := range results {
 		state := r.GetState()
-		if state == scanners.HostAlive {
-			ui.PrintflnSuccess("%v is %s", r.Address, state)
+		if state != scanners.HostAlive && state != scanners.HostUnknown {
+			fmt.Printf("Scanned %v with state %s\n", r.Address, state)
+		} else {
+			if state == scanners.HostAlive {
+				ui.PrintflnSuccess("%v is %s", r.Address, state)
+			}
+			if state == scanners.HostUnknown {
+				ui.PrintflnWarn("%v is %s", r.Address, state)
+			}
 			if len(r.Mac) > 0 {
 				fmt.Printf("\t%s\n", r.Mac)
 			}
@@ -204,12 +254,6 @@ func main() {
 			if len(r.Workgroup) > 0 {
 				fmt.Printf("\t%s\n", r.Workgroup)
 			}
-			/*if len(r.Comments) > 0 {
-				fmt.Println(r.Comments[0])
-			}*/
-			//fmt.Println()
-		} else {
-			fmt.Printf("Scanned %v with state %s\n", r.Address, state)
 		}
 		for _, c := range r.Comments {
 			fmt.Printf("\t\t%s\n", c)
