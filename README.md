@@ -16,6 +16,8 @@ And, of course, **colored** console output with spinner 😊
 
 ## Usage
 
+You can get a ready-to-go binary from /bin directory. The command line flags are as follows:
+
 `netscan <IP address or CIDR range> [OPTIONS]`
 
 The scan target is passed as an IP or CIDR string. In the latter case, network and broadcast IPv4 addresses are automatically omitted from the scan range.  
