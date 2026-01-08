@@ -35,6 +35,7 @@ func GetArpTable() (map[netip.Addr]*ArpTableValue, error) {
 
 var (
 	broadcastMac = "ff:ff:ff:ff:ff:ff"
+	nullMac      = "00:00:00:00:00:00"
 	multicastMac = "01:00:5e"
 )
 
@@ -46,6 +47,9 @@ func isNonUnicastMac(mac string) bool {
 		return true
 	}
 	if strings.EqualFold(mac[:8], multicastMac) {
+		return true
+	}
+	if strings.EqualFold(mac, nullMac) {
 		return true
 	}
 	return strings.EqualFold(mac, broadcastMac)
