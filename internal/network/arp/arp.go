@@ -2,6 +2,7 @@ package arp
 
 import (
 	"net/netip"
+	"strings"
 )
 
 type ArpInfo struct {
@@ -21,7 +22,9 @@ func GetArpTable() (map[netip.Addr]*ArpTableValue, error) {
 	}
 	result := make(map[netip.Addr]*ArpTableValue)
 	for _, v := range values {
-		// TODO move broadcast MAC detection here
+		if isNonUnicastMac(v.Mac) {
+			continue
+		}
 		result[v.Ip] = &ArpTableValue{
 			Mac:         v.Mac,
 			IsProcessed: false,
@@ -30,4 +33,20 @@ func GetArpTable() (map[netip.Addr]*ArpTableValue, error) {
 	return result, nil
 }
 
-var broadcastMacBytes = []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
+var (
+	broadcastMac = "ff:ff:ff:ff:ff:ff"
+	multicastMac = "01:00:5e"
+)
+
+// Check if provided mac is
+// broadcast, multicast or
+// is shorter than 17 bytes.
+func isNonUnicastMac(mac string) bool {
+	if len(mac) < 17 {
+		return true
+	}
+	if strings.EqualFold(mac[:8], multicastMac) {
+		return true
+	}
+	return strings.EqualFold(mac, broadcastMac)
+}

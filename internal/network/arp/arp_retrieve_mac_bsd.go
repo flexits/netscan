@@ -136,18 +136,6 @@ func parseArpTable(buf []byte) ([]ArpInfo, error) {
 			continue
 		}
 
-		// skip broadcast MACs
-		isBroadcast := true
-		for i := 0; i < 6; i++ {
-			isBroadcast = byte(datalink.Data[i]) == 0xFF
-			if !isBroadcast {
-				break
-			}
-		}
-		if isBroadcast {
-			continue
-		}
-
 		mac := fmt.Sprintf("%02x:%02x:%02x:%02x:%02x:%02x",
 			byte(datalink.Data[0]),
 			byte(datalink.Data[1]),
