@@ -1,8 +1,10 @@
 # netscan
 
-<img width="600" alt="netscan-main-1" src="https://github.com/user-attachments/assets/ed181049-bd7b-4be3-adc6-5577527f3561" />
-
 A console utility to discover local network hosts (devices).
+
+<img width="800" alt="netscan windows cmd" src="https://github.com/user-attachments/assets/5f20bac8-55bf-40fa-b04d-f46071daf4a2" />
+
+<img width="800" alt="netscan macos zsh" src="https://github.com/user-attachments/assets/6063b4a1-347e-43c1-b171-faf638f2cbf8" />
 
 **Designed for speed**: utilizes a customizable network scanning/probing pipeline in parallel mode. By default, uses up to 128 concurrent threads, completing a standard /24 SOHO subnet in a matter of seconds.
 
