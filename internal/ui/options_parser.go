@@ -17,12 +17,12 @@ CIDR range format example:
 
 // Options definition for jessevdk/go-flags package.
 type cliOptions struct {
-	Tcp     bool `short:"c" long:"tcp" description:"Enable TCP connect probing"`
-	Nbstat  bool `short:"n" long:"nbstat" description:"Enable NetBIOS NBSTAT probing (IPv4 only)"`
-	Ping    bool `short:"p" long:"ping" description:"Enable ping (ICMP echo) scanning"`
-	Arp     bool `short:"a" long:"arp" description:"Enable ARP passive discovery"`
-	Threads byte `short:"t" long:"threads" description:"Override number of concurrent threads to use"`
-	Verbose bool `short:"v" long:"verbose" description:"Verbose output"`
+	Tcp     bool   `short:"c" long:"tcp" description:"Enable TCP connect probing"`
+	Nbstat  bool   `short:"n" long:"nbstat" description:"Enable NetBIOS NBSTAT probing (IPv4 only)"`
+	Ping    bool   `short:"p" long:"ping" description:"Enable ping (ICMP echo) scanning"`
+	Arp     bool   `short:"a" long:"arp" description:"Enable ARP passive discovery"`
+	Threads uint16 `short:"t" long:"threads" description:"Override number of concurrent threads to use (up to 65,535)"`
+	Verbose bool   `short:"v" long:"verbose" description:"Verbose output"`
 }
 
 type OptionsParser struct {

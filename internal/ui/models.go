@@ -10,7 +10,7 @@ type Options struct {
 	UseArpCache    bool
 	UseFingerprint bool
 	UseBannerGrab  bool
-	Threads        byte
+	Threads        uint16
 }
 
 // Returns true is any of the available scanners is selected for usage.

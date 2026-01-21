@@ -65,7 +65,7 @@ func main() {
 	if options.Threads == 0 {
 		//options.Threads = byte(runtime.GOMAXPROCS(0))
 		// we are i/o-bound, not cpu-bound, so may increase the number
-		options.Threads = 128
+		options.Threads = 255
 	}
 	// enable TCP by default
 	if !options.IsAnyScanSelected() {
