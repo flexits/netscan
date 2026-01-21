@@ -46,7 +46,7 @@ func main() {
 	options, err := optionsParser.ParseArgs()
 	if err != nil || options == nil {
 		if errors.Is(err, ui.ErrHelpShown) {
-			os.Exit(0)
+			return
 		}
 		ui.PrintflnLabeledError("Error parsing options: %v\n", err)
 		os.Exit(1)
@@ -268,5 +268,4 @@ func main() {
 	*/
 	// grant time for goroutines to finish
 	time.Sleep(500 * time.Millisecond)
-	os.Exit(0)
 }
