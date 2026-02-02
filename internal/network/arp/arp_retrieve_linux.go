@@ -43,6 +43,9 @@ func RetrieveArpTable() ([]ArpInfo, error) {
 		if err != nil {
 			continue
 		}
+		if isNonUnicastMac(mac) {
+			continue
+		}
 		table = append(table, ArpInfo{Ip: ip, Mac: mac.String()})
 	}
 	return table, nil

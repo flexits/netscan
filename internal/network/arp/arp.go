@@ -1,8 +1,8 @@
 package arp
 
 import (
+	"net"
 	"net/netip"
-	"strings"
 )
 
 type ArpInfo struct {
@@ -22,9 +22,6 @@ func GetArpTable() (map[netip.Addr]*ArpTableValue, error) {
 	}
 	result := make(map[netip.Addr]*ArpTableValue)
 	for _, v := range values {
-		if isNonUnicastMac(v.Mac) {
-			continue
-		}
 		result[v.Ip] = &ArpTableValue{
 			Mac:         v.Mac,
 			IsProcessed: false,
@@ -33,24 +30,7 @@ func GetArpTable() (map[netip.Addr]*ArpTableValue, error) {
 	return result, nil
 }
 
-var (
-	broadcastMac = "ff:ff:ff:ff:ff:ff"
-	nullMac      = "00:00:00:00:00:00"
-	multicastMac = "01:00:5e"
-)
-
-// Check if provided mac is
-// broadcast, multicast or
-// is shorter than 17 bytes.
-func isNonUnicastMac(mac string) bool {
-	if len(mac) < 17 {
-		return true
-	}
-	if strings.EqualFold(mac[:8], multicastMac) {
-		return true
-	}
-	if strings.EqualFold(mac, nullMac) {
-		return true
-	}
-	return strings.EqualFold(mac, broadcastMac)
+// Check if provided mac is non-unicast
+func isNonUnicastMac(mac net.HardwareAddr) bool {
+	return (mac[0] & 1) == 1
 }

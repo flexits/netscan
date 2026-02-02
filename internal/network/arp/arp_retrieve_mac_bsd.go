@@ -136,7 +136,7 @@ func parseArpTable(buf []byte) ([]ArpInfo, error) {
 			continue
 		}
 
-		mac := fmt.Sprintf("%02x:%02x:%02x:%02x:%02x:%02x",
+		macStr := fmt.Sprintf("%02x:%02x:%02x:%02x:%02x:%02x",
 			byte(datalink.Data[0]),
 			byte(datalink.Data[1]),
 			byte(datalink.Data[2]),
@@ -144,10 +144,14 @@ func parseArpTable(buf []byte) ([]ArpInfo, error) {
 			byte(datalink.Data[4]),
 			byte(datalink.Data[5]),
 		)
-		_, err := net.ParseMAC(mac)
-		if err == nil {
-			table = append(table, ArpInfo{Ip: ip, Mac: mac})
+		mac, err := net.ParseMAC(macStr)
+		if err != nil {
+			continue
 		}
+		if isNonUnicastMac(mac) {
+			continue
+		}
+		table = append(table, ArpInfo{Ip: ip, Mac: macStr})
 	}
 
 	return table, nil
